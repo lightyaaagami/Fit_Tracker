@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2d3d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Workout Log Toolkit</title>
+<style>
+:root{--navy:#1f2d3d;--red:#c0392b;--bg:#f3f6f9;--card:#fff;--in:#fff8c5;--drop:#dceafa;--line:#d5dbe1}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:#222;padding-bottom:70px}
+header{background:var(--navy);color:#fff;padding:12px 14px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:17px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);z-index:5}
+nav button{flex:1;padding:14px 0;border:0;background:none;font-size:14px;font-weight:bold;color:#666}
+nav button.on{color:var(--red);border-top:3px solid var(--red)}
+.wrap{padding:10px;max-width:760px;margin:auto}
+.days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+.days button{flex:0 0 auto;padding:8px 12px;border-radius:18px;border:1px solid var(--line);background:#fff;font-size:13px}
+.days button.on{background:var(--navy);color:#fff}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.bar label{font-size:12px;color:#555}
+select,input{font-size:15px;padding:7px;border:1px solid var(--line);border-radius:6px;font-family:inherit}
+.card{background:var(--card);border-radius:10px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.1);overflow:hidden}
+.ch{background:var(--drop);padding:8px 10px}
+.ch select{width:100%;font-weight:bold;color:var(--navy);background:#fff}
+.tg{font-size:12px;color:#555;margin-top:4px}
+.row{display:grid;grid-template-columns:22px 1fr 1fr 1fr 1fr 52px;gap:4px;align-items:center;padding:4px 8px;border-top:1px solid #eee}
+.row.h{font-size:10px;color:#777;font-weight:bold;text-align:center;border-top:0;padding-top:6px}
+.row select{padding:6px 2px;background:var(--in);width:100%;font-size:14px}
+.row .n{font-weight:bold;text-align:center}
+.row .v{font-size:12px;text-align:right;color:#444}
+.lw{font-size:11px;color:#888;padding:0 10px 4px}
+.tot{background:#e8edf2;padding:10px;font-weight:bold;display:flex;justify-content:space-between;border-radius:10px}
+.btn{padding:8px 12px;border:0;border-radius:6px;background:var(--navy);color:#fff;font-size:13px}
+.add{background:none;color:var(--red);border:1px dashed var(--red);margin:6px 8px 8px}
+table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+th,td{border:1px solid var(--line);padding:5px;text-align:center}
+th{background:var(--navy);color:#fff}
+.scroll{overflow-x:auto}
+.bars{display:flex;align-items:flex-end;gap:4px;height:120px;background:#fff;padding:8px;border-radius:8px}
+.bars div{flex:1;background:var(--red);min-height:2px;border-radius:3px 3px 0 0;position:relative}
+.bars span{position:absolute;bottom:-16px;left:0;right:0;font-size:9px;text-align:center;color:#555}
+h3{margin:14px 0 6px;color:var(--red)}
+.bw{display:grid;grid-template-columns:50px 1fr 1fr 70px 70px;gap:4px;align-items:center;margin:3px 0;font-size:13px}
+.bw input{width:100%;background:var(--in)}
+</style>
+</head>
+<body>
+<header><h1>Workout Log Toolkit</h1></header>
+<div class="wrap" id="app"></div>
+<nav id="nav"></nav>
+<script>
+// ---------------- plan (edit freely) ----------------
+const H="60-90 s", V="2-3 min";
+// slot: [Block1 name, sets, reps, Block2 name, sets, reps]
+const DAYS=[
+{n:"Day 1 Push A",cat:"push",slots:[
+ ["Incline dumbbell press",4,"6-8","Barbell bench press",4,"6-8"],
+ ["Flat chest press (machine or barbell)",3,"8-10","Incline dumbbell or machine press",3,"8-10"],
+ ["Seated dumbbell shoulder press",3,"8-10","Standing barbell or machine shoulder press",3,"8-10"],
+ ["Lateral raise",4,"12-15","Dumbbell lateral raise",4,"12-15"],
+ ["Rope / cable triceps pushdown",3,"10-12","Close-grip bench or dips (assisted if needed)",3,"8-10"],
+ ["Overhead dumbbell triceps extension",3,"10-12","Overhead cable triceps extension",3,"10-12"]]},
+{n:"Day 2 Pull A",cat:"pull",slots:[
+ ["Lat pulldown",4,"8-10","Wide-grip pulldown",4,"8-10"],
+ ["Barbell row",3,"8-10","Chest-supported row or T-bar row",3,"8-10"],
+ ["Close-grip cable row",3,"10-12","Close-grip cable row",3,"10-12"],
+ ["Reverse pec-deck fly",3,"15","Reverse pec-deck fly",3,"15"],
+ ["Barbell curl",3,"8-10","Preacher curl",3,"8-10"],
+ ["Hammer curl",3,"10-12","Hammer curl",3,"10-12"],
+ ["Back extension",2,"12","Back extension",2,"12"],
+ ["Plank",3,"45-60 s","Plank",3,"45-60 s"]]},
+{n:"Day 3 Legs A",cat:"legs",slots:[
+ ["Barbell or goblet squat",4,"6-10","Hack squat or front squat",4,"6-10"],
+ ["Leg press",3,"10-12","Leg press",3,"10-12"],
+ ["Leg extension",3,"12-15","Leg extension",3,"12-15"],
+ ["Lying leg curl",3,"10-12","Lying leg curl",3,"10-12"],
+ ["Standing calf raise",4,"12-15","Standing calf raise",4,"12-15"],
+ ["Hanging knee raise",3,"12-15","Cable crunch",3,"12-15"],
+ ["",0,"","Walking lunges",3,"10 each leg"]]},
+{n:"Day 4 Push B",cat:"push",slots:[
+ ["Flat dumbbell press",3,"10-12","Flat dumbbell press",3,"10-12"],
+ ["Incline machine press",3,"10-12","Incline machine press",3,"10-12"],
+ ["Pec fly (cable or machine)",3,"12-15","Decline press or low-to-high cable fly",3,"12-15"],
+ ["Arnold press or machine shoulder press",3,"10-12","Arnold press",3,"10-12"],
+ ["Cable lateral raise",3,"15-20","Dumbbell lateral raise",3,"15-20"],
+ ["Skull crusher",3,"10-12","Skull crusher",3,"10-12"],
+ ["Cable triceps pushdown",2,"15","Rope pushdown",2,"15"]]},
+{n:"Day 5 Pull B",cat:"pull",slots:[
+ ["Close-grip pulldown or assisted pull-up",3,"8-12","Pull-ups (assisted if needed)",3,"6-10"],
+ ["Single-arm dumbbell row",3,"10-12","Straight-bar cable row",3,"10-12"],
+ ["Face pull",3,"15","Face pull",3,"15"],
+ ["Dumbbell shrug",3,"12-15","Behind-the-back cable shrug or dumbbell shrug",3,"12-15"],
+ ["Incline dumbbell curl",3,"10-12","Spider or concentration curl",3,"10-12"],
+ ["Cable curl",2,"12","Cable curl",2,"12"],
+ ["Wrist curl + reverse wrist curl",2,"15 each","Wrist curl + reverse wrist curl",2,"15 each"],
+ ["Farmer's walk",3,"30-40 m","Farmer's walk",3,"30-40 m"]]},
+{n:"Day 6 Legs B",cat:"legs",slots:[
+ ["Romanian deadlift",4,"8-10","Stiff-leg or dumbbell RDL",4,"8-10"],
+ ["Bulgarian split squat or walking lunges",3,"10 each leg","Step-ups",3,"10 each leg"],
+ ["Seated leg curl",3,"12","Single-leg curl or Nordic curl negatives",3,"8-12"],
+ ["Hip thrust",3,"10-12","Cable pull-through",3,"12"],
+ ["Seated calf raise",3,"15","Seated calf raise",3,"15"],
+ ["Ab wheel or cable crunch",3,"10-12","Ab wheel",3,"10-12"],
+ ["Side plank",2,"30 s each side","Side plank",2,"30 s each side"]]}];
+const EXTRAS={push:["Cable crossover","Dips","Push-ups","Pec deck machine","Front raise","Machine lateral raise","Close-grip bench press"],
+ pull:["Deadlift","Pull-ups","Seated cable row (wide grip)","Straight-arm pulldown","Rack pull","Wrist curl","Reverse wrist curl"],
+ legs:["Deadlift","Goblet squat","Hack squat","Sumo squat","Walking lunges","Hip thrust","Glute bridge","Leg press calf raise","Hanging leg raise","Plank","Ab wheel","Back extension"]};
+const BLOCK=[1,1,1,1,2,2,2,2,1,1,1,1];
+const WLABEL=w=>w===12?"Deload (use ~60% weights)":"Block "+BLOCK[w-1];
+const REPS=[...Array(30)].map((_,i)=>i+1);
+const WTS=[...Array(81)].map((_,i)=>i*2.5);
+const RESTS=["30 s","45 s","60 s","90 s","2 min","2.5 min","3 min","4 min","5 min"];
+const RPES=[...Array(11)].map((_,i)=>5+i*0.5);
+
+// ---------------- state ----------------
+let S;
+try{S=JSON.parse(localStorage.getItem("wlog"))}catch(e){}
+S=Object.assign({logs:{},body:{},day:0,week:1,view:"log"},S||{});
+const save=()=>localStorage.setItem("wlog",JSON.stringify(S));
+const key=(d,w)=>d+"-"+w;
+const getLog=(d,w)=>S.logs[key(d,w)]||(S.logs[key(d,w)]={date:"",dur:"",ex:{}});
+const slotOf=(d,si,w)=>{const s=DAYS[d].slots[si],b=BLOCK[w-1]===2;
+  return {name:b?s[3]:s[0],sets:b?s[4]:s[1],reps:b?s[5]:s[2],maxSets:Math.max(s[1],s[4])}};
+function exEntry(d,w,si){
+  const L=getLog(d,w);
+  if(!L.ex[si]){const m=slotOf(d,si,w).maxSets+1;L.ex[si]={name:"",sets:[...Array(m)].map(()=>({r:"",w:"",rest:"",rpe:""}))}}
+  return L.ex[si];
+}
+const names=d=>{const o=[];DAYS[d].slots.forEach(s=>[s[0],s[3]].forEach(n=>n&&!o.includes(n)&&o.push(n)));
+  EXTRAS[DAYS[d].cat].forEach(n=>!o.includes(n)&&o.push(n));return o};
+const vol=x=>(x.r!==""&&x.w!=="")?x.r*x.w:0;
+const sessionVol=(d,w)=>{const L=S.logs[key(d,w)];if(!L)return 0;
+  return Object.values(L.ex).reduce((a,e)=>a+e.sets.reduce((b,x)=>b+vol(x),0),0)};
+const fmt=n=>n?Math.round(n).toLocaleString():"-";
+
+// ---------------- helpers ----------------
+function h(tag,attrs={},...kids){const e=document.createElement(tag);
+  for(const k in attrs){if(k==="class")e.className=attrs[k];else if(k.startsWith("on"))e.addEventListener(k.slice(2),attrs[k]);else e[k]=attrs[k]}
+  kids.flat().forEach(c=>e.append(c instanceof Node?c:document.createTextNode(c)));return e}
+function sel(opts,val,onchange,blank=""){
+  const s=h("select",{onchange:e=>onchange(e.target.value)});
+  s.append(h("option",{value:"",textContent:blank}));
+  opts.forEach(o=>s.append(h("option",{value:String(o),textContent:String(o),selected:String(o)===String(val)})));
+  return s}
+
+// ---------------- views ----------------
+function render(){
+  const app=document.getElementById("app");app.replaceChildren();
+  document.getElementById("nav").replaceChildren(...[["log","Log"],["sum","Summary"],["body","Body"],["data","Data"]].map(([k,t])=>
+    h("button",{class:S.view===k?"on":"",onclick:()=>{S.view=k;save();render();window.scrollTo(0,0)}},t)));
+  ({log:viewLog,sum:viewSum,body:viewBody,data:viewData})[S.view](app);
+}
+function viewLog(app){
+  const d=S.day,w=S.week,L=getLog(d,w);
+  app.append(h("div",{class:"days"},DAYS.map((x,i)=>h("button",{class:i===d?"on":"",onclick:()=>{S.day=i;save();render()}},x.n))));
+  app.append(h("div",{class:"bar"},
+    h("label",{},"Week"),
+    sel(BLOCK.map((_,i)=>i+1),w,v=>{S.week=+v||1;save();render()}),
+    h("input",{type:"date",value:L.date,onchange:e=>{L.date=e.target.value;save()}}),
+    h("input",{type:"number",placeholder:"min",style:"width:70px",value:L.dur,onchange:e=>{L.dur=e.target.value;save()}}),
+    h("label",{},"min")));
+  app.append(h("div",{class:"tg"},"Plan: "+WLABEL(w)));
+  const totEl=h("span",{},"");
+  const updTot=()=>{totEl.textContent=fmt(sessionVol(d,w))+" kg"};
+  DAYS[d].slots.forEach((_,si)=>{
+    const info=slotOf(d,si,w),e=exEntry(d,w,si),name=e.name||info.name;
+    const card=h("div",{class:"card"});
+    const head=h("div",{class:"ch"},
+      sel(names(d),name,v=>{e.name=v;save()},"(optional extra exercise)"),
+      h("div",{class:"tg"},info.sets?("Target: "+info.sets+" x "+info.reps):"Optional slot (Block 2 uses it)"));
+    card.append(head,h("div",{class:"row h"},h("span"),"Reps","Weight kg","Rest","RPE",h("span",{},"Vol")));
+    const prev=w>1?S.logs[key(d,w-1)]:null;
+    const rowsBox=h("div");
+    const addRow=(i)=>{
+      const x=e.sets[i],vEl=h("span",{class:"v"},vol(x)?String(vol(x)):"");
+      const upd=()=>{vEl.textContent=vol(x)?String(vol(x)):"";updTot();save()};
+      rowsBox.append(h("div",{class:"row"},h("span",{class:"n"},i+1),
+        sel(REPS,x.r,v=>{x.r=v===""?"":+v;upd()}),
+        sel(WTS,x.w,v=>{x.w=v===""?"":+v;upd()}),
+        sel(RESTS,x.rest,v=>{x.rest=v;save()}),
+        sel(RPES,x.rpe,v=>{x.rpe=v===""?"":+v;save()}),vEl));
+      const p=prev&&prev.ex[si]&&prev.ex[si].sets[i];
+      if(p&&p.r!==""&&p.w!=="")rowsBox.append(h("div",{class:"lw"},"Last week: "+p.r+" x "+p.w+" kg"));
+    };
+    e.sets.forEach((_,i)=>addRow(i));
+    card.append(rowsBox,h("button",{class:"btn add",onclick:()=>{e.sets.push({r:"",w:"",rest:"",rpe:""});save();addRow(e.sets.length-1)}},"+ Add set"));
+    app.append(card);
+  });
+  app.append(h("div",{class:"tot"},h("span",{},"SESSION VOLUME"),totEl));updTot();
+}
+function viewSum(app){
+  app.append(h("h3",{},"Total volume per week (kg)"));
+  const tot=BLOCK.map((_,i)=>DAYS.reduce((a,_,d)=>a+sessionVol(d,i+1),0)),mx=Math.max(...tot,1);
+  app.append(h("div",{class:"bars",style:"margin-bottom:22px"},tot.map((t,i)=>h("div",{style:`height:${Math.max(2,t/mx*100)}%`,title:fmt(t)},h("span",{},"W"+(i+1))))));
+  app.append(h("h3",{},"Volume per session (kg)"));
+  const rows=DAYS.map((x,d)=>h("tr",{},h("td",{},x.n),BLOCK.map((_,i)=>h("td",{},fmt(sessionVol(d,i+1))))));
+  app.append(h("div",{class:"scroll"},h("table",{},h("tr",{},h("th",{},"Day"),BLOCK.map((_,i)=>h("th",{},"W"+(i+1)))),rows,
+    h("tr",{},h("td",{},h("b",{},"All")),tot.map(t=>h("td",{},h("b",{},fmt(t))))))));
+  // personal bests
+  app.append(h("h3",{},"Personal bests (best weight, kg)"));
+  const best={};
+  Object.entries(S.logs).forEach(([k,L])=>{const d=+k.split("-")[0],w=+k.split("-")[1];
+    Object.entries(L.ex).forEach(([si,e])=>{const n=e.name||slotOf(d,+si,w).name;if(!n)return;
+      e.sets.forEach(x=>{if(x.w!==""&&x.r!==""&&(!best[n]||x.w>best[n].w))best[n]={w:x.w,r:x.r}})})});
+  const list=Object.entries(best).sort((a,b)=>a[0].localeCompare(b[0]));
+  app.append(list.length?h("table",{},h("tr",{},h("th",{},"Exercise"),h("th",{},"Best"),h("th",{},"Reps")),
+    list.map(([n,b])=>h("tr",{},h("td",{style:"text-align:left"},n),h("td",{},b.w),h("td",{},b.r)))):h("p",{},"Log some sets to see your bests."));
+}
+function viewBody(app){
+  app.append(h("h3",{},"Body weight (weekly) - start 66.5 kg, goal 70-72 kg"));
+  S.body[0]=S.body[0]||{date:"",wt:66.5};
+  for(let w=0;w<=24;w++){
+    const b=S.body[w]||(S.body[w]={date:"",wt:""}),p=S.body[w-1];
+    const ch=h("span",{},""),since=h("span",{},"");
+    const upd=()=>{const x=parseFloat(b.wt);ch.textContent=(x&&p&&parseFloat(p.wt))?(x-p.wt>=0?"+":"")+(x-p.wt).toFixed(1):"";
+      since.textContent=x?((x-S.body[0].wt>=0?"+":"")+(x-S.body[0].wt).toFixed(1)):""};
+    app.append(h("div",{class:"bw"},h("b",{},w===0?"Start":"W"+w),
+      h("input",{type:"date",value:b.date,onchange:e=>{b.date=e.target.value;save()}}),
+      h("input",{type:"number",step:"0.1",inputMode:"decimal",placeholder:"kg",value:b.wt,onchange:e=>{b.wt=e.target.value===""?"":+e.target.value;upd();save()}}),ch,since));
+    upd();
+  }
+}
+function viewData(app){
+  app.append(h("h3",{},"Backup & export"),
+    h("p",{},"All data is stored on this phone only. Export a backup regularly."),
+    h("button",{class:"btn",onclick:()=>download("workout-backup.json",JSON.stringify(S),"application/json")},"Export backup (JSON)")," ",
+    h("button",{class:"btn",onclick:exportCSV},"Export log (CSV)"),
+    h("h3",{},"Restore"),
+    h("input",{type:"file",accept:".json",onchange:e=>{const f=e.target.files[0];if(!f)return;
+      f.text().then(t=>{try{S=Object.assign(S,JSON.parse(t));save();alert("Restored");render()}catch(x){alert("Invalid file")}})}}),
+    h("h3",{},"Reset"),
+    h("button",{class:"btn",style:"background:#c0392b",onclick:()=>{if(confirm("Delete ALL logged data?")){localStorage.removeItem("wlog");location.reload()}}},"Delete all data"));
+}
+function download(name,text,type){const a=h("a",{href:URL.createObjectURL(new Blob([text],{type})),download:name});document.body.append(a);a.click();a.remove()}
+function exportCSV(){
+  const rows=[["Day","Week","Date","Exercise","Set","Reps","Weight kg","Rest","RPE","Volume kg"]];
+  Object.entries(S.logs).forEach(([k,L])=>{const [d,w]=k.split("-").map(Number);
+    Object.entries(L.ex).forEach(([si,e])=>e.sets.forEach((x,i)=>{if(x.r===""&&x.w==="")return;
+      rows.push([DAYS[d].n,w,L.date,e.name||slotOf(d,+si,w).name,i+1,x.r,x.w,x.rest,x.rpe,vol(x)])}))});
+  download("workout-log.csv",rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(",")).join("\n"),"text/csv");
+}
+render();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
